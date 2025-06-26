@@ -1,0 +1,103 @@
+/* Cross-browser compatibility fixes */
+
+/* Fix for autofill background in WebKit browsers */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #f9fafb inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  input, 
+  textarea {
+    font-size: 16px !important; /* Prevent zoom on focus in iOS */
+  }
+  
+  /* Fix iOS rounded corners */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 0.5rem;
+  }
+  
+  /* Fix for iOS button styling */
+  button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+}
+
+/* Android specific fixes */
+@supports (-moz-appearance:none) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Fix for color contrast in input fields */
+::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+/* Better focus styling for accessibility */
+:focus {
+  outline: none;
+}
+
+/* Dark mode compatibility */
+@media (prefers-color-scheme: dark) {
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important;
+    -webkit-text-fill-color: #f9fafb !important;
+  }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: max(0px)) {
+  .fixed-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+  
+  .fixed-top {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .chat-panel-mobile {
+    height: calc(100vh - 60px - env(safe-area-inset-bottom));
+  }
+}
+
+/* Fix for mobile viewport */
+@media screen and (max-width: 767px) {
+  input, textarea, select, button {
+    font-size: 16px; /* Prevent iOS zoom on focus */
+  }
+  
+  /* Fix touch targets for better accessibility */
+  button, .button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
