@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { UserProvider } from './context/UserContext'
 import { StripeProvider } from './context/StripeContext'
+import { AuthProvider } from './contexts/AuthContext'
+import { Toaster } from 'react-hot-toast'
 
 // Import pages
 import Home from './pages/Home'
@@ -9,7 +11,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Pricing from './pages/Pricing'
 import Subscribe from './pages/Subscribe'
-import MealPlanner from './pages/MealPlanner'
+import MealPlanner from './components/mealplanning/MealPlanner'
 import MealPlans from './pages/MealPlans'
 import Meals from './pages/Meals'
 import PremiumMealPlanner from './pages/PremiumMealPlanner'
@@ -24,9 +26,30 @@ import Layout from './components/layout/Layout'
 function App() {
   return (
     <UserProvider>
-      <StripeProvider>
-        <Router>
-          <Routes>
+      <AuthProvider>
+        <StripeProvider>
+          <Router>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  style: {
+                    background: '#10b981',
+                  },
+                },
+                error: {
+                  style: {
+                    background: '#ef4444',
+                  },
+                },
+              }}
+            />
+            <Routes>
             <Route path="/" element={<Layout><Home /></Layout>} />
             <Route path="/register" element={<Layout><Register /></Layout>} />
             <Route path="/login" element={<Layout><Login /></Layout>} />
@@ -45,6 +68,7 @@ function App() {
           </Routes>
         </Router>
       </StripeProvider>
+      </AuthProvider>
     </UserProvider>
   )
 }

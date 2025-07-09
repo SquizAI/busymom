@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Planner API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .tier-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .free { background: #e5e7eb; color: #374151; }
+        .basic { background: #dbeafe; color: #1e40af; }
+        .premium { background: #e9d5ff; color: #6b21a8; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+        }
+        .meal-card {
+            background: #f3f4f6;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid #3b82f6;
+        }
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        pre {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍳 BusyWomen Meal Planner API Test</h1>
+    
+    <div class="container">
+        <h2>Test Meal Plan Generation</h2>
+        <p>Click a tier to generate a meal plan with that subscription level:</p>
+        
+        <button onclick="testMealPlan('free')">
+            Free Tier <span class="tier-badge free">3 meals</span>
+        </button>
+        <button onclick="testMealPlan('basic')">
+            Basic Tier <span class="tier-badge basic">Full week</span>
+        </button>
+        <button onclick="testMealPlan('premium')">
+            Premium Tier <span class="tier-badge premium">+ Nutrition</span>
+        </button>
+        
+        <div id="mealPlanResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Test Shopping List Generation</h2>
+        <button onclick="testShoppingList()" id="shoppingBtn" disabled>
+            Generate Shopping List (Generate meal plan first)
+        </button>
+        <div id="shoppingResult"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Test Meal Swap</h2>
+        <button onclick="testMealSwap('basic')">Test Swap (Basic)</button>
+        <button onclick="testMealSwap('free')">Test Swap (Free - Should Fail)</button>
+        <div id="swapResult"></div>
+    </div>
+
+    <script>
+        let currentMealPlan = null;
+        const API_BASE = 'http://localhost:8888/.netlify/functions';
+        
+        async function testMealPlan(tier) {
+            const resultDiv = document.getElementById('mealPlanResult');
+            resultDiv.innerHTML = '<p>⏳ Generating meal plan...</p>';
+            
+            const preferences = {
+                dietaryRestrictions: tier === 'free' ? ['vegetarian'] : ['vegetarian', 'gluten-free'],
+                allergies: ['nuts'],
+                cookingTimeLimit: 30,
+                familySize: tier === 'premium' ? 4 : 2,
+                cuisineTypes: ['Mediterranean', 'Asian'],
+                kidFriendly: tier === 'premium',
+                budget: tier === 'premium' ? 200 : null
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate-meal-plan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preferences, userTier: tier })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.mealPlan) {
+                    currentMealPlan = data.mealPlan;
+                    document.getElementById('shoppingBtn').disabled = false;
+                    document.getElementById('shoppingBtn').textContent = 'Generate Shopping List';
+                    
+                    let html = `<div class="success">✅ Meal plan generated successfully!</div>`;
+                    html += `<p><strong>Model:</strong> ${data.model}</p>`;
+                    html += `<p><strong>Days:</strong> ${data.mealPlan.days.length}</p>`;
+                    
+                    // Show first day's meals
+                    const firstDay = data.mealPlan.days[0];
+                    html += `<h3>${firstDay.day} Meals:</h3>`;
+                    
+                    firstDay.meals.forEach(meal => {
+                        html += `<div class="meal-card">
+                            <h4>${meal.type.toUpperCase()}: ${meal.name}</h4>
+                            <p>${meal.description}</p>
+                            <p>⏱️ Prep: ${meal.prepTime} min | 👥 Servings: ${meal.servings}</p>
+                            ${meal.nutrition ? `<p>🔥 ${meal.nutrition.calories} cal | 💪 ${meal.nutrition.protein}g protein</p>` : ''}
+                            ${meal.kidFriendlyTips ? `<p>👶 ${meal.kidFriendlyTips}</p>` : ''}
+                        </div>`;
+                    });
+                    
+                    html += `<details><summary>View Full Response</summary><pre>${JSON.stringify(data, null, 2)}</pre></details>`;
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${data.error || 'Failed to generate meal plan'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testShoppingList() {
+            if (!currentMealPlan) return;
+            
+            const resultDiv = document.getElementById('shoppingResult');
+            resultDiv.innerHTML = '<p>⏳ Generating shopping list...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate-shopping-list`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mealPlan: currentMealPlan,
+                        userTier: 'premium',
+                        pantryItems: ['salt', 'pepper', 'olive oil']
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.shoppingList) {
+                    let html = '<div class="success">✅ Shopping list generated!</div>';
+                    
+                    data.shoppingList.categories.forEach(category => {
+                        html += `<h4>${category.name}</h4><ul>`;
+                        category.items.forEach(item => {
+                            html += `<li>☐ ${item.quantity} ${item.name}`;
+                            if (item.estimatedCost) html += ` - $${item.estimatedCost}`;
+                            html += '</li>';
+                        });
+                        html += '</ul>';
+                    });
+                    
+                    if (data.shoppingList.totalEstimatedCost) {
+                        html += `<p><strong>Total Estimated Cost:</strong> $${data.shoppingList.totalEstimatedCost}</p>`;
+                    }
+                    
+                    html += `<details><summary>View Full Response</summary><pre>${JSON.stringify(data, null, 2)}</pre></details>`;
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${data.error || 'Failed to generate shopping list'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function testMealSwap(tier) {
+            const resultDiv = document.getElementById('swapResult');
+            resultDiv.innerHTML = '<p>⏳ Testing meal swap...</p>';
+            
+            const currentMeal = {
+                type: 'breakfast',
+                name: 'Oatmeal with Berries',
+                prepTime: 10,
+                description: 'Hearty oatmeal topped with fresh berries'
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/swap-meal`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        currentMeal,
+                        preferences: { dietaryRestrictions: ['vegetarian'] },
+                        userTier: tier
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 403) {
+                    resultDiv.innerHTML = `<div class="success">✅ Free tier correctly blocked: ${data.error}</div>`;
+                } else if (data.success && data.meal) {
+                    let html = '<div class="success">✅ Meal swap successful!</div>';
+                    html += `<div class="meal-card">
+                        <h4>Original: ${currentMeal.name}</h4>
+                        <h4>➡️ Swapped to: ${data.meal.name}</h4>
+                        <p>${data.meal.description}</p>
+                    </div>`;
+                    html += `<details><summary>View Full Response</summary><pre>${JSON.stringify(data, null, 2)}</pre></details>`;
+                    resultDiv.innerHTML = html;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">❌ Error: ${data.error || 'Failed to swap meal'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

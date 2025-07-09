@@ -5,8 +5,8 @@
 
 // Get API key from environment variables
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-const modelPro = import.meta.env.AI_GEMINI_MODEL_PRO || 'gemini-2.5-pro-preview-05-06';
-const modelFlash = import.meta.env.AI_GEMINI_MODEL_FLASH || 'gemini-2.5-flash-preview-04-17';
+const modelPro = import.meta.env.AI_GEMINI_MODEL_PRO || 'gemini-2.5-pro';
+const modelFlash = import.meta.env.AI_GEMINI_MODEL_FLASH || 'gemini-2.5-flash';
 
 /**
  * Generate a text response from Gemini model

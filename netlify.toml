@@ -1,0 +1,58 @@
+[build]
+  command = "npm run build"
+  functions = "netlify/functions"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+  
+  # Set function timeout (max 10 seconds for free tier, 26 seconds for paid)
+  # Meal generation might take a few seconds
+  included_files = ["netlify/functions/**"]
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+
+# Environment variable hints (actual values set in Netlify dashboard)
+[context.production.environment]
+  # GEMINI_API_KEY = "Set in Netlify dashboard"
+  # VITE_SUPABASE_URL = "Set in Netlify dashboard"
+  # VITE_SUPABASE_ANON_KEY = "Set in Netlify dashboard"
+  # VITE_STRIPE_PUBLISHABLE_KEY = "Set in Netlify dashboard"
+  
+[context.deploy-preview.environment]
+  # Same environment variables as production
+
+[dev]
+  command = "npm run dev"
+  port = 5173
+  targetPort = 5173
+  publish = "dist"
+  framework = "#custom"
+  functionsPort = 8888

@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Access the API key from environment variables
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL_PRO = import.meta.env.AI_GEMINI_MODEL_PRO || 'gemini-2.5-pro-preview';
+const MODEL_PRO = import.meta.env.AI_GEMINI_MODEL_PRO || 'gemini-2.5-pro';
 const MODEL_FLASH = import.meta.env.AI_GEMINI_MODEL_FLASH || 'gemini-2.5-flash';
 
 // Initialize the Gemini API
