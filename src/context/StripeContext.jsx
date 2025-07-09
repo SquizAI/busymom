@@ -1,6 +1,6 @@
 import { createContext, useState, useContext, useEffect } from 'react';
 import { UserContext } from './UserContext';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { loadStripe } from '@stripe/stripe-js';
 import * as mockStripeApi from '../lib/mockStripeApi';
 
@@ -23,6 +23,12 @@ export const StripeProvider = ({ children }) => {
   const fetchSubscription = async () => {
     try {
       setLoading(true);
+      
+      // Skip if Supabase is not configured
+      if (!isSupabaseConfigured) {
+        setSubscription(null);
+        return;
+      }
       
       // Get subscription from Supabase
       const { data, error } = await supabase

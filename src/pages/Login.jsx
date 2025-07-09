@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { UserContext } from '../context/UserContext'
 
@@ -12,10 +12,11 @@ const Login = () => {
   const { user, loginAsDummy } = useContext(UserContext) || { user: null, loginAsDummy: null }
 
   // Redirect if already logged in
-  if (user) {
-    navigate('/dashboard')
-    return null
-  }
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard')
+    }
+  }, [user, navigate])
 
   const handleLogin = async (e) => {
     e.preventDefault()

@@ -58,12 +58,17 @@ Return the meal plan as JSON with this exact structure:
   ]
 }
 
-Important:
-- Each meal should be unique and practical
-- Include nutritional information
-- Consider the dietary restrictions and allergies strictly
-- Keep within the cooking time limit
-- Return ONLY valid JSON, no additional text`;
+CRITICAL JSON FORMATTING RULES:
+1. Return ONLY the JSON object, no markdown, no explanation, no additional text
+2. Do NOT wrap the JSON in code blocks or backticks
+3. Ensure all strings are properly quoted with double quotes
+4. Ensure all numbers are unquoted
+5. No trailing commas after the last item in arrays or objects
+6. All property names must be in double quotes
+7. The response must start with { and end with }
+8. Each meal should be unique and practical
+9. Include accurate nutritional information
+10. Strictly follow dietary restrictions and avoid allergens`;
 };
 
 // Generate a fallback meal plan if API fails
@@ -266,28 +271,57 @@ export const generateLocalMealPlan = async (preferences, userTier = 'free') => {
     const text = response.text();
 
     // Parse JSON from response
-    let jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-    let jsonText = jsonMatch ? jsonMatch[1] : text;
+    let jsonText = text.trim();
     
-    // Try to extract JSON object if no code block found
-    if (!jsonMatch) {
-      const startIdx = jsonText.indexOf('{');
-      const endIdx = jsonText.lastIndexOf('}');
-      if (startIdx !== -1 && endIdx !== -1) {
-        jsonText = jsonText.substring(startIdx, endIdx + 1);
-      }
+    // Remove markdown code blocks if present
+    jsonText = jsonText.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+    
+    // Remove any text before the first { and after the last }
+    const startIdx = jsonText.indexOf('{');
+    const endIdx = jsonText.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      jsonText = jsonText.substring(startIdx, endIdx + 1);
     }
     
+    // Remove any remaining markdown or explanation text
+    jsonText = jsonText.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+    
     try {
-      // Clean up common JSON issues
-      jsonText = jsonText
-        .replace(/,\s*}/g, '}') // Remove trailing commas in objects
-        .replace(/,\s*]/g, ']') // Remove trailing commas in arrays
-        .replace(/'/g, '"') // Replace single quotes with double quotes
-        .replace(/\n/g, ' ') // Remove newlines that might break JSON
-        .replace(/\s+/g, ' '); // Normalize whitespace
-      
-      let mealPlan = JSON.parse(jsonText);
+      // More robust JSON parsing
+      // First try to parse as-is
+      let mealPlan;
+      try {
+        mealPlan = JSON.parse(jsonText);
+      } catch (firstError) {
+        // If that fails, try to fix common issues
+        // Preserve string content by temporarily replacing it
+        const stringMatches = [];
+        let tempText = jsonText.replace(/"([^"\\]|\\.)*"/g, (match) => {
+          const index = stringMatches.length;
+          stringMatches.push(match);
+          return `"__STR_${index}__"`;
+        });
+        
+        // Fix structural issues
+        tempText = tempText
+          .replace(/,\s*}/g, '}') // Remove trailing commas in objects
+          .replace(/,\s*]/g, ']') // Remove trailing commas in arrays
+          .replace(/}\s*{/g, '},{') // Add comma between consecutive objects
+          .replace(/]\s*\[/g, '],[') // Add comma between consecutive arrays
+          .replace(/"\s*"/g, '","') // Add comma between consecutive strings
+          .replace(/(\d)\s*"/g, '$1,"') // Add comma between number and string
+          .replace(/"\s*(\d)/g, '",$1') // Add comma between string and number
+          .replace(/}\s*"/g, '},"') // Add comma between object and string
+          .replace(/"\s*{/g, '",{'); // Add comma between string and object
+        
+        // Restore original strings
+        tempText = tempText.replace(/"__STR_(\d+)__"/g, (match, index) => {
+          return stringMatches[parseInt(index)];
+        });
+        
+        // Try parsing the cleaned text
+        mealPlan = JSON.parse(tempText);
+      }
       
       // Apply tier restrictions
       if (userTier === 'free') {

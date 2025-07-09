@@ -94,6 +94,73 @@ export const generateSmartShoppingList = async (mealPlan, userTier = 'free', pan
     
   } catch (error) {
     console.error("Error generating shopping list:", error);
+    console.log("Using local shopping list generator...");
+    
+    // Fallback to local generation
+    return generateLocalShoppingList(mealPlan, pantryItems);
+  }
+};
+
+// Local shopping list generator
+const generateLocalShoppingList = (mealPlan, pantryItems = []) => {
+  try {
+    const shoppingList = [];
+    const itemMap = new Map();
+    
+    // Aggregate ingredients from all meals
+    if (mealPlan && mealPlan.days) {
+      mealPlan.days.forEach(day => {
+        day.meals.forEach(meal => {
+          if (meal.ingredients) {
+            meal.ingredients.forEach(ingredient => {
+              const key = ingredient.name.toLowerCase();
+              if (itemMap.has(key)) {
+                const existing = itemMap.get(key);
+                existing.meals.push(`${day.day} - ${meal.type}`);
+              } else {
+                itemMap.set(key, {
+                  name: ingredient.name,
+                  amount: ingredient.amount,
+                  category: ingredient.category || 'other',
+                  meals: [`${day.day} - ${meal.type}`]
+                });
+              }
+            });
+          }
+        });
+      });
+    }
+    
+    // Convert map to array and organize by category
+    const categories = {};
+    itemMap.forEach(item => {
+      if (!categories[item.category]) {
+        categories[item.category] = [];
+      }
+      categories[item.category].push(item);
+    });
+    
+    // Create shopping list structure
+    Object.entries(categories).forEach(([category, items]) => {
+      shoppingList.push({
+        category: category.charAt(0).toUpperCase() + category.slice(1),
+        items: items.map(item => ({
+          name: item.name,
+          amount: item.amount,
+          meals: item.meals,
+          checked: false
+        }))
+      });
+    });
+    
+    return {
+      success: true,
+      shoppingList,
+      totalItems: itemMap.size,
+      model: 'local'
+    };
+  } catch (error) {
+    console.error("Error in local shopping list generation:", error);
     return { success: false, error: error.message };
   }
 };

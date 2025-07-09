@@ -1,10 +1,29 @@
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Note: In production, use a backend API
-});
+// Check if API key is configured
+const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const isOpenAIConfigured = !!(OPENAI_API_KEY && 
+  OPENAI_API_KEY !== 'your_openai_api_key_here' &&
+  OPENAI_API_KEY.startsWith('sk-') &&
+  OPENAI_API_KEY.length > 20);
+
+// Initialize OpenAI client only if configured
+let openai = null;
+let openAIError = null;
+
+if (isOpenAIConfigured) {
+  try {
+    openai = new OpenAI({
+      apiKey: OPENAI_API_KEY,
+      dangerouslyAllowBrowser: true // Note: In production, use a backend API
+    });
+  } catch (error) {
+    console.error('Error initializing OpenAI client:', error);
+    openAIError = error;
+  }
+} else {
+  console.warn('OpenAI API key not configured. Using fallback images.');
+}
 
 /**
  * Generate an image for a meal using OpenAI's image generation
@@ -16,6 +35,11 @@ const openai = new OpenAI({
  * @returns {Promise<string>} - Base64 encoded image or URL
  */
 export const generateMealImage = async (meal, options = {}) => {
+  // If OpenAI is not configured or had initialization error, use fallback immediately
+  if (!isOpenAIConfigured || !openai || openAIError) {
+    return generateFallbackImage(meal);
+  }
+
   try {
     // Construct a detailed prompt for better image generation
     const mealTypeContext = {
@@ -53,7 +77,15 @@ export const generateMealImage = async (meal, options = {}) => {
     throw new Error('No image data returned from OpenAI');
     
   } catch (error) {
-    console.error('Error generating meal image:', error);
+    // Handle authentication errors specifically
+    if (error.status === 401 || error.message?.includes('401') || error.message?.includes('Incorrect API key')) {
+      console.warn('OpenAI API key is invalid. Using fallback images.');
+      // Disable future attempts
+      openAIError = error;
+      openai = null;
+    } else {
+      console.error('Error generating meal image:', error);
+    }
     
     // Fallback to a default image or placeholder
     return generateFallbackImage(meal);
@@ -105,6 +137,12 @@ export const generateBatchMealImages = async (meals, options = {}) => {
  * @returns {Promise<string>} - Edited image
  */
 export const editMealImage = async (originalImage, editPrompt, options = {}) => {
+  // If OpenAI is not configured, return original image
+  if (!isOpenAIConfigured || !openai) {
+    console.warn('OpenAI not configured. Cannot edit image.');
+    return originalImage;
+  }
+
   try {
     // Convert base64 to blob if needed
     let imageFile;
@@ -153,6 +191,12 @@ export const editMealImage = async (originalImage, editPrompt, options = {}) => 
  * @returns {Promise<string>} - Image variation
  */
 export const generateMealImageVariation = async (originalImage, options = {}) => {
+  // If OpenAI is not configured, return original image
+  if (!isOpenAIConfigured || !openai) {
+    console.warn('OpenAI not configured. Cannot generate variations.');
+    return originalImage;
+  }
+
   try {
     // Convert to file format
     let imageFile;
@@ -241,21 +285,32 @@ export const cacheMealImage = async (mealId, imageData) => {
     const transaction = db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
     
-    await store.put({
+    const putRequest = store.put({
       id: mealId,
       image: imageData,
       timestamp: Date.now()
     });
     
-    // Clean up old images (older than 7 days)
-    const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const allImages = await store.getAll();
-    
-    for (const item of allImages) {
-      if (item.timestamp < weekAgo) {
-        await store.delete(item.id);
+    putRequest.onsuccess = async () => {
+      // Clean up old images (older than 7 days)
+      try {
+        const weekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const getAllRequest = store.getAll();
+        
+        getAllRequest.onsuccess = () => {
+          const allImages = getAllRequest.result;
+          if (Array.isArray(allImages)) {
+            allImages.forEach(item => {
+              if (item.timestamp < weekAgo) {
+                store.delete(item.id);
+              }
+            });
+          }
+        };
+      } catch (cleanupError) {
+        console.error('Error cleaning up old images:', cleanupError);
       }
-    }
+    };
     
   } catch (error) {
     console.error('Error caching meal image:', error);
@@ -282,18 +337,30 @@ export const getCachedMealImage = async (mealId) => {
     const transaction = db.transaction([storeName], 'readonly');
     const store = transaction.objectStore(storeName);
     
-    const result = await store.get(mealId);
-    if (result && result.image) {
-      return result.image;
-    }
+    return new Promise((resolve, reject) => {
+      const getRequest = store.get(mealId);
+      
+      getRequest.onsuccess = () => {
+        const result = getRequest.result;
+        if (result && result.image) {
+          resolve(result.image);
+        } else {
+          resolve(null);
+        }
+      };
+      
+      getRequest.onerror = () => {
+        console.error('IndexedDB get error:', getRequest.error);
+        // Fall back to localStorage
+        resolve(localStorage.getItem(`meal-image-${mealId}`));
+      };
+    });
     
   } catch (error) {
     console.error('Error retrieving cached meal image:', error);
     // Fall back to localStorage
     return localStorage.getItem(`meal-image-${mealId}`);
   }
-  
-  return null;
 };
 
 /**

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { UserProvider } from './context/UserContext'
 import { StripeProvider } from './context/StripeContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -23,54 +23,108 @@ import NotFound from './pages/NotFound'
 // Import components
 import Layout from './components/layout/Layout'
 
-function App() {
-  return (
-    <UserProvider>
-      <AuthProvider>
-        <StripeProvider>
-          <Router>
-            <Toaster 
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  style: {
-                    background: '#10b981',
-                  },
-                },
-                error: {
-                  style: {
-                    background: '#ef4444',
-                  },
-                },
-              }}
-            />
-            <Routes>
-            <Route path="/" element={<Layout><Home /></Layout>} />
-            <Route path="/register" element={<Layout><Register /></Layout>} />
-            <Route path="/login" element={<Layout><Login /></Layout>} />
-            <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-            <Route path="/pricing" element={<Layout><Pricing /></Layout>} />
-            <Route path="/subscribe" element={<Layout><Subscribe /></Layout>} />
-            <Route path="/subscribe/:planId" element={<Layout><Subscribe /></Layout>} />
-            <Route path="/meal-planner" element={<Layout><MealPlanner /></Layout>} />
-            <Route path="/meal-plans" element={<Layout><MealPlans /></Layout>} />
-            <Route path="/meals" element={<Layout><Meals /></Layout>} />
-            <Route path="/premium-meal-planner" element={<Layout><PremiumMealPlanner /></Layout>} />
-            <Route path="/terms" element={<Layout><Terms /></Layout>} />
-            <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
-            <Route path="/refund" element={<Layout><Refund /></Layout>} />
-            <Route path="*" element={<Layout><NotFound /></Layout>} />
-          </Routes>
-        </Router>
+// App wrapper component for providers
+const AppWrapper = ({ children }) => (
+  <UserProvider>
+    <AuthProvider>
+      <StripeProvider>
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              style: {
+                background: '#10b981',
+              },
+            },
+            error: {
+              style: {
+                background: '#ef4444',
+              },
+            },
+          }}
+        />
+        {children}
       </StripeProvider>
-      </AuthProvider>
-    </UserProvider>
-  )
+    </AuthProvider>
+  </UserProvider>
+);
+
+// Create router with future flags
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <AppWrapper><Layout><Home /></Layout></AppWrapper>,
+  },
+  {
+    path: "/register",
+    element: <AppWrapper><Layout><Register /></Layout></AppWrapper>,
+  },
+  {
+    path: "/login",
+    element: <AppWrapper><Layout><Login /></Layout></AppWrapper>,
+  },
+  {
+    path: "/dashboard",
+    element: <AppWrapper><Layout><Dashboard /></Layout></AppWrapper>,
+  },
+  {
+    path: "/pricing",
+    element: <AppWrapper><Layout><Pricing /></Layout></AppWrapper>,
+  },
+  {
+    path: "/subscribe",
+    element: <AppWrapper><Layout><Subscribe /></Layout></AppWrapper>,
+  },
+  {
+    path: "/subscribe/:planId",
+    element: <AppWrapper><Layout><Subscribe /></Layout></AppWrapper>,
+  },
+  {
+    path: "/meal-planner",
+    element: <AppWrapper><Layout><MealPlanner /></Layout></AppWrapper>,
+  },
+  {
+    path: "/meal-plans",
+    element: <AppWrapper><Layout><MealPlans /></Layout></AppWrapper>,
+  },
+  {
+    path: "/meals",
+    element: <AppWrapper><Layout><Meals /></Layout></AppWrapper>,
+  },
+  {
+    path: "/premium-meal-planner",
+    element: <AppWrapper><Layout><PremiumMealPlanner /></Layout></AppWrapper>,
+  },
+  {
+    path: "/terms",
+    element: <AppWrapper><Layout><Terms /></Layout></AppWrapper>,
+  },
+  {
+    path: "/privacy",
+    element: <AppWrapper><Layout><Privacy /></Layout></AppWrapper>,
+  },
+  {
+    path: "/refund",
+    element: <AppWrapper><Layout><Refund /></Layout></AppWrapper>,
+  },
+  {
+    path: "*",
+    element: <AppWrapper><Layout><NotFound /></Layout></AppWrapper>,
+  },
+], {
+  future: {
+    v7_startTransition: true,
+    v7_relativeSplatPath: true,
+  },
+})
+
+function App() {
+  return <RouterProvider router={router} />
 }
 
 export default App
